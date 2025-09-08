@@ -75,6 +75,45 @@ def test_get_invoice(mock_conn):
         assert response.status_code == 200
         assert response.content.startswith(b"%PDF")
 
+@patch("app.api.routes.checkout.get_conn")
+def test_get_payment_found(mock_conn):
+    mock_cursor = MagicMock()
+    mock_cursor.fetchone.return_value = [1, 123, "CREDIT", 50.0, 50.0, "APPROVED", None]
+    mock_conn.return_value.cursor.return_value = mock_cursor
+
+    response = client.get("/payments/1")
+    assert response.status_code == 200
+    assert response.json()["status"] == "APPROVED"
+
+
+@patch("app.api.routes.checkout.get_conn")
+def test_get_payment_not_found(mock_conn):
+    mock_cursor = MagicMock()
+    mock_cursor.fetchone.return_value = None
+    mock_conn.return_value.cursor.return_value = mock_cursor
+
+    response = client.get("/payments/999")
+    assert response.status_code == 404
+
+
+@patch("app.api.routes.simulate.get_conn")
+def test_simulate_payment_not_found(mock_conn):
+    mock_cursor = MagicMock()
+    mock_cursor.fetchone.return_value = None
+    mock_conn.return_value.cursor.return_value = mock_cursor
+
+    response = client.post("/simulate", params={"payment_id": 999})
+    assert response.status_code == 404
+
+
+@patch("app.api.routes.invoices.get_conn")
+def test_get_invoice_not_found(mock_conn):
+    mock_cursor = MagicMock()
+    mock_cursor.fetchone.return_value = None
+    mock_conn.return_value.cursor.return_value = mock_cursor
+
+    response = client.get("/invoices/999")
+    assert response.status_code == 404
 
 def test_health_check():
     response = client.get("/health")
