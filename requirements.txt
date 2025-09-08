@@ -12,3 +12,6 @@ typing-inspection==0.4.1
 typing_extensions==4.15.0
 requests
 httpx
+flask
+pytest
+pytest-cov
