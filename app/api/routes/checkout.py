@@ -1,44 +1,54 @@
-from fastapi import APIRouter
+import os
+import psycopg2
+from fastapi import APIRouter, HTTPException
 from app.services.booking_callback import send_payment_callback
 
-
 router = APIRouter()
+DATABASE_URL = os.getenv("DATABASE_URL")
 
-
-# Mock em memória
-PAYMENTS: dict[int, dict] = {}
-PAY_SEQ = 1
-
+def get_conn():
+    return psycopg2.connect(DATABASE_URL, sslmode="require")
 
 @router.post("/checkout")
 async def checkout(booking_id: int, amount: float, method: str, coupon: str | None = None):
-    global PAY_SEQ
-    pid = PAY_SEQ
-    PAY_SEQ += 1
     status = "PENDING" if method in ("PIX", "BOLETO") else "APPROVED"
 
+    conn = get_conn()
+    cur = conn.cursor()
+    cur.execute(
+        """
+        INSERT INTO payments (booking_id, method, requested_amount, paid_amount, status, coupon_code)
+        VALUES (%s, %s, %s, %s, %s, %s)
+        RETURNING id
+        """,
+        (booking_id, method, amount, amount if status == "APPROVED" else None, status, coupon),
+    )
+    payment_id = cur.fetchone()[0]
+    conn.commit()
+    cur.close()
+    conn.close()
 
-    PAYMENTS[pid] = {
-    "id": pid,
-    "booking_id": booking_id,
-    "requested_amount": amount,
-    "paid_amount": amount if status == "APPROVED" else None,
-    "status": status,
-    "method": method,
-    "coupon_code": coupon,
-    }
+    # callback
+    send_payment_callback(payment_id=payment_id, booking_id=booking_id, status=status, paid_amount=amount if status == "APPROVED" else None)
 
-
-    # dispara callback assíncrono simples (aqui síncrono para demo)
-    send_payment_callback(payment_id=pid, booking_id=booking_id, status=status, paid_amount=PAYMENTS[pid]["paid_amount"])
-
-
-    return {"payment_id": pid, "status": status}
-
+    return {"payment_id": payment_id, "status": status}
 
 @router.get("/payments/{payment_id}")
 async def get_payment(payment_id: int):
-    p = PAYMENTS.get(payment_id)
-    if not p:
-        return {"error": "not found"}
-    return p
+    conn = get_conn()
+    cur = conn.cursor()
+    cur.execute("SELECT id, booking_id, method, requested_amount, paid_amount, status, coupon_code FROM payments WHERE id=%s", (payment_id,))
+    row = cur.fetchone()
+    cur.close()
+    conn.close()
+    if not row:
+        raise HTTPException(404, "payment not found")
+    return {
+        "id": row[0],
+        "booking_id": row[1],
+        "method": row[2],
+        "requested_amount": float(row[3]),
+        "paid_amount": float(row[4]) if row[4] else None,
+        "status": row[5],
+        "coupon_code": row[6],
+    }
