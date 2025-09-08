@@ -14,7 +14,7 @@ app.include_router(health.router)
 client = TestClient(app)
 
 
-@patch("app.routes.checkout.get_conn")
+@patch("app.api.routes.checkout.get_conn")
 @patch("app.services.booking_callback.requests.post")
 def test_checkout_credit(mock_post, mock_conn):
     mock_cursor = MagicMock()
@@ -30,7 +30,7 @@ def test_checkout_credit(mock_post, mock_conn):
     assert response.json()["status"] == "APPROVED"
 
 
-@patch("app.routes.checkout.get_conn")
+@patch("app.api.routes.checkout.get_conn")
 @patch("app.services.booking_callback.requests.post")
 def test_checkout_pix(mock_post, mock_conn):
     mock_cursor = MagicMock()
@@ -46,7 +46,7 @@ def test_checkout_pix(mock_post, mock_conn):
     assert response.json()["status"] == "PENDING"
 
 
-@patch("app.routes.simulate.get_conn")
+@patch("app.api.routes.simulate.get_conn")
 @patch("app.services.booking_callback.requests.post")
 def test_simulate_approved(mock_post, mock_conn):
     mock_cursor = MagicMock()
@@ -62,13 +62,13 @@ def test_simulate_approved(mock_post, mock_conn):
     assert response.json()["status"] == "APPROVED"
 
 
-@patch("app.routes.invoices.get_conn")
+@patch("app.api.routes.invoices.get_conn")
 def test_get_invoice(mock_conn):
     mock_cursor = MagicMock()
     mock_cursor.fetchone.return_value = [5, 55]
     mock_conn.return_value.cursor.return_value = mock_cursor
 
-    with patch("app.routes.invoices.minimal_pdf_bytes") as mock_pdf:
+    with patch("app.api.routes.invoices.minimal_pdf_bytes") as mock_pdf:
         mock_pdf.return_value = b"%PDF-1.4 invoice"
 
         response = client.get("/invoices/5")
