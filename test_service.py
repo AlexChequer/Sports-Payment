@@ -3,6 +3,7 @@ from app.services import booking_callback
 from unittest.mock import patch, MagicMock
 
 
+
 @patch("app.services.booking_callback.requests.post")
 def test_send_payment_callback_all_fields(mock_post):
     mock_response = MagicMock()
