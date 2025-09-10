@@ -2,6 +2,9 @@ import os
 import psycopg2
 from fastapi import APIRouter, HTTPException
 from app.services.booking_callback import send_payment_callback
+from dotenv import load_dotenv
+
+load_dotenv()
 
 router = APIRouter()
 DATABASE_URL = os.getenv("DATABASE_URL")
