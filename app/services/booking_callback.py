@@ -1,5 +1,8 @@
 import os
 import requests
+from dotenv import load_dotenv
+
+load_dotenv()
 
 
 BOOKING_URL = os.getenv("BOOKING_URL", "http://sports-booking:8000")
