@@ -46,4 +46,8 @@ jobs:
           script: |
             docker stop sports-payment
             docker rm --force sports-payment
-            docker run -d -p 8082:5000 --name sports-payment cheqr/sports-payment-ci:${{ github.sha }} 
+            docker run -d \
+              --name sports-payment \
+              -p 8082:5000 \
+              -e DATABASE_URL='${{ secrets.DATABASE_URL }}' \
+              cheqr/sports-payment-ci:${{ github.sha }}
