@@ -23,10 +23,20 @@ class CheckoutRequest(BaseModel):
 @router.post("/checkout")
 async def checkout(payload: CheckoutRequest):
     booking_id = payload.booking_id
-    amount = payload.amount
-    method = payload.method
+    amount = float(payload.amount)
+    # normaliza método para casar com enum do banco
+    method_in = (payload.method or "").upper()
+    if method_in in ("CREDIT_CARD", "CREDITCARD", "CARD", "CARTAO", "CARTÃO"):
+        method_db = "CARD"
+    elif method_in in ("PIX",):
+        method_db = "PIX"
+    elif method_in in ("BOLETO",):
+        method_db = "BOLETO"
+    else:
+        method_db = method_in or "CARD"
+
     coupon = payload.coupon
-    status = "PENDING" if method in ("PIX", "BOLETO") else "APPROVED"
+    status = "PENDING" if method_db in ("PIX", "BOLETO") else "APPROVED"
 
     conn = get_conn()
     cur = conn.cursor()
@@ -36,7 +46,7 @@ async def checkout(payload: CheckoutRequest):
         VALUES (%s, %s, %s, %s, %s, %s)
         RETURNING id
         """,
-        (booking_id, method, amount, amount if status == "APPROVED" else None, status, coupon),
+        (booking_id, method_db, amount, amount if status == "APPROVED" else None, status, coupon),
     )
     payment_id = cur.fetchone()[0]
     conn.commit()
