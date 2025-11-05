@@ -5,7 +5,7 @@ from dotenv import load_dotenv
 load_dotenv()
 
 
-BOOKING_URL = os.getenv("BOOKING_URL", "http://18.231.197.236:8082")
+BOOKING_URL = os.getenv("BOOKING_URL", "http://sports-booking:8080")
 
 
 def send_payment_callback(payment_id: int, booking_id: int, status: str, paid_amount: float | None = None, invoice_id: int | None = None, invoice_url: str | None = None):
