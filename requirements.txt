@@ -18,4 +18,5 @@ flask
 pytest
 pytest-cov
 psycopg2-binary
+python-jose
 requests
