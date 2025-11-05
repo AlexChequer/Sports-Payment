@@ -50,4 +50,5 @@ jobs:
               --name sports-payment \
               -p 8082:5000 \
               -e DATABASE_URL='${{ secrets.DATABASE_URL }}' \
+              --network=rede \
               cheqr/sports-payment-ci:${{ github.sha }}
