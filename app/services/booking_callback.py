@@ -22,6 +22,10 @@ def send_payment_callback(payment_id: int, booking_id: int, status: str, paid_am
         params["invoice_url"] = invoice_url
 
 
-    r = requests.post(f"{BOOKING_URL}/callbacks/payment", params=params, timeout=15)
-    r.raise_for_status()
-    return r.json()
+    try:
+        r = requests.post(f"{BOOKING_URL}/callbacks/payment", params=params, timeout=5)
+        r.raise_for_status()
+        return r.json()
+    except Exception:
+        # Não bloquear o fluxo de checkout se o callback falhar/timeout.
+        return {"ok": False, "ignored": True}
