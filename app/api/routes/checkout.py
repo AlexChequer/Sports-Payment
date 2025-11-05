@@ -1,7 +1,8 @@
 import os
 import psycopg2
-from fastapi import APIRouter, HTTPException
+from fastapi import APIRouter, HTTPException, Depends
 from app.services.booking_callback import send_payment_callback
+from app.core.auth import verify_token
 from dotenv import load_dotenv
 
 load_dotenv()
@@ -13,7 +14,13 @@ def get_conn():
     return psycopg2.connect(DATABASE_URL, sslmode="require")
 
 @router.post("/checkout")
-async def checkout(booking_id: int, amount: float, method: str, coupon: str | None = None):
+async def checkout(
+    booking_id: int,
+    amount: float,
+    method: str,
+    coupon: str | None = None,
+    payload=Depends(verify_token),
+):
     status = "PENDING" if method in ("PIX", "BOLETO") else "APPROVED"
 
     conn = get_conn()
@@ -31,16 +38,24 @@ async def checkout(booking_id: int, amount: float, method: str, coupon: str | No
     cur.close()
     conn.close()
 
-    # callback
-    send_payment_callback(payment_id=payment_id, booking_id=booking_id, status=status, paid_amount=amount if status == "APPROVED" else None)
+    # callback para o serviço de booking
+    send_payment_callback(
+        payment_id=payment_id,
+        booking_id=booking_id,
+        status=status,
+        paid_amount=amount if status == "APPROVED" else None,
+    )
 
     return {"payment_id": payment_id, "status": status}
 
 @router.get("/payments/{payment_id}")
-async def get_payment(payment_id: int):
+async def get_payment(payment_id: int, payload=Depends(verify_token)):
     conn = get_conn()
     cur = conn.cursor()
-    cur.execute("SELECT id, booking_id, method, requested_amount, paid_amount, status, coupon_code FROM payments WHERE id=%s", (payment_id,))
+    cur.execute(
+        "SELECT id, booking_id, method, requested_amount, paid_amount, status, coupon_code FROM payments WHERE id=%s",
+        (payment_id,),
+    )
     row = cur.fetchone()
     cur.close()
     conn.close()

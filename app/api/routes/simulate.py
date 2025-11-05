@@ -1,7 +1,8 @@
 import os
 import psycopg2
-from fastapi import APIRouter, HTTPException
+from fastapi import APIRouter, HTTPException, Depends
 from app.services.booking_callback import send_payment_callback
+from app.core.auth import verify_token
 from dotenv import load_dotenv
 
 load_dotenv()
@@ -13,7 +14,11 @@ def get_conn():
     return psycopg2.connect(DATABASE_URL, sslmode="require")
 
 @router.post("/simulate")
-async def simulate(payment_id: int, force_status: str | None = None):
+async def simulate(
+    payment_id: int,
+    force_status: str | None = None,
+    payload=Depends(verify_token),
+):
     conn = get_conn()
     cur = conn.cursor()
     cur.execute("SELECT booking_id, status, paid_amount FROM payments WHERE id=%s", (payment_id,))
@@ -41,6 +46,12 @@ async def simulate(payment_id: int, force_status: str | None = None):
     cur.close()
     conn.close()
 
-    send_payment_callback(payment_id=payment_id, booking_id=booking_id, status=status, paid_amount=paid_amount, **invoice_payload)
+    send_payment_callback(
+        payment_id=payment_id,
+        booking_id=booking_id,
+        status=status,
+        paid_amount=paid_amount,
+        **invoice_payload,
+    )
 
     return {"ok": True, "status": status, **invoice_payload}
