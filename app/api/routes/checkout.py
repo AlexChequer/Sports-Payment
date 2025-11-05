@@ -1,6 +1,9 @@
 import os
 import psycopg2
+
 from fastapi import APIRouter, HTTPException, Depends
+from pydantic import BaseModel
+
 from app.services.booking_callback import send_payment_callback
 from app.core.auth import verify_token
 from dotenv import load_dotenv
@@ -13,15 +16,31 @@ DATABASE_URL = os.getenv("DATABASE_URL")
 def get_conn():
     return psycopg2.connect(DATABASE_URL, sslmode="require")
 
+class CheckoutRequest(BaseModel):
+    booking_id: int
+    amount: float
+    method: str
+    coupon: str | None = None
+
+
 @router.post("/checkout")
-async def checkout(
-    booking_id: int,
-    amount: float,
-    method: str,
-    coupon: str | None = None,
-    payload=Depends(verify_token),
-):
-    status = "PENDING" if method in ("PIX", "BOLETO") else "APPROVED"
+
+async def checkout(payload: CheckoutRequest):
+    booking_id = payload.booking_id
+    amount = float(payload.amount)
+    # normaliza método para casar com enum do banco
+    method_in = (payload.method or "").upper()
+    if method_in in ("CREDIT_CARD", "CREDITCARD", "CARD", "CARTAO", "CARTÃO"):
+        method_db = "CARD"
+    elif method_in in ("PIX",):
+        method_db = "PIX"
+    elif method_in in ("BOLETO",):
+        method_db = "BOLETO"
+    else:
+        method_db = method_in or "CARD"
+
+    coupon = payload.coupon
+    status = "PENDING" if method_db in ("PIX", "BOLETO") else "APPROVED"
 
     conn = get_conn()
     cur = conn.cursor()
@@ -31,7 +50,7 @@ async def checkout(
         VALUES (%s, %s, %s, %s, %s, %s)
         RETURNING id
         """,
-        (booking_id, method, amount, amount if status == "APPROVED" else None, status, coupon),
+        (booking_id, method_db, amount, amount if status == "APPROVED" else None, status, coupon),
     )
     payment_id = cur.fetchone()[0]
     conn.commit()

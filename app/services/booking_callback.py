@@ -5,7 +5,7 @@ from dotenv import load_dotenv
 load_dotenv()
 
 
-BOOKING_URL = os.getenv("BOOKING_URL", "http://sports-booking:8000")
+BOOKING_URL = os.getenv("BOOKING_URL", "http://18.231.197.236:8080")
 
 
 def send_payment_callback(payment_id: int, booking_id: int, status: str, paid_amount: float | None = None, invoice_id: int | None = None, invoice_url: str | None = None):
@@ -22,6 +22,10 @@ def send_payment_callback(payment_id: int, booking_id: int, status: str, paid_am
         params["invoice_url"] = invoice_url
 
 
-    r = requests.post(f"{BOOKING_URL}/callbacks/payment", params=params, timeout=15)
-    r.raise_for_status()
-    return r.json()
+    try:
+        r = requests.post(f"{BOOKING_URL}/callbacks/payment", params=params, timeout=5)
+        r.raise_for_status()
+        return r.json()
+    except Exception:
+        # Não bloquear o fluxo de checkout se o callback falhar/timeout.
+        return {"ok": False, "ignored": True}
