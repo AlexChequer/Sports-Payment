@@ -1,6 +1,7 @@
 import os
 import psycopg2
 from fastapi import APIRouter, HTTPException
+from pydantic import BaseModel
 from app.services.booking_callback import send_payment_callback
 from dotenv import load_dotenv
 
@@ -12,8 +13,15 @@ DATABASE_URL = os.getenv("DATABASE_URL")
 def get_conn():
     return psycopg2.connect(DATABASE_URL, sslmode="require")
 
+class SimulateRequest(BaseModel):
+    payment_id: int
+    force_status: str | None = None
+
+
 @router.post("/simulate")
-async def simulate(payment_id: int, force_status: str | None = None):
+async def simulate(payload: SimulateRequest):
+    payment_id = payload.payment_id
+    force_status = payload.force_status
     conn = get_conn()
     cur = conn.cursor()
     cur.execute("SELECT booking_id, status, paid_amount FROM payments WHERE id=%s", (payment_id,))

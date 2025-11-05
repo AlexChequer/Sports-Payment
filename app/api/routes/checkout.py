@@ -1,6 +1,7 @@
 import os
 import psycopg2
 from fastapi import APIRouter, HTTPException
+from pydantic import BaseModel
 from app.services.booking_callback import send_payment_callback
 from dotenv import load_dotenv
 
@@ -12,8 +13,19 @@ DATABASE_URL = os.getenv("DATABASE_URL")
 def get_conn():
     return psycopg2.connect(DATABASE_URL, sslmode="require")
 
+class CheckoutRequest(BaseModel):
+    booking_id: int
+    amount: float
+    method: str
+    coupon: str | None = None
+
+
 @router.post("/checkout")
-async def checkout(booking_id: int, amount: float, method: str, coupon: str | None = None):
+async def checkout(payload: CheckoutRequest):
+    booking_id = payload.booking_id
+    amount = payload.amount
+    method = payload.method
+    coupon = payload.coupon
     status = "PENDING" if method in ("PIX", "BOLETO") else "APPROVED"
 
     conn = get_conn()
